@@ -29,11 +29,10 @@ def make_scatter(X, y, img_dir, val, title):
   
   # making the scatterplots
   # note that y == 0 denotes quark data and y == 1 denotes gluon data  
-  plt.scatter(X.loc[y == val, 'ntracks'], X.loc[y == val, 'jetPt'], label='quarks')
-  plt.scatter(X.loc[y == val, 'ntracks'], X.loc[y == val, 'jetPt'], label='gluons')
+  plt.scatter(X.loc[y == val, 'ntracks'], X.loc[y == val, 'jetPt'], label=title)
   plt.title('tracks v Pt ' + title)
-  plt.ylabel('tracks')
-  plt.xlabel('Pt')
+  plt.ylabel('Pt')
+  plt.xlabel('ntracks')
   plt.savefig(os.path.join(img_dir, 'scatterplot' + title +'.png'))
   plt.close()
 
