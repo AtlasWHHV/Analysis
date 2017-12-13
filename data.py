@@ -8,41 +8,61 @@ import pickle
 
 import constants
 
-def calculate_jets(dataframe):
-  with np.errstate(divide='ignore', invalid='ignore'):
-    dataframe['dispersion'] = dataframe.apply(lambda r: np.sqrt(np.sum(np.square(r['trackPt']))) / np.sum(r['trackPt']), axis=1)
-    dataframe.loc[~np.isfinite(dataframe['dispersion']), 'dispersion'] = 0.0
-  def width(row):
-    deltaPhi = np.absolute(row['jetPhi']-row['trackPhi'])
-    deltaPhi = np.minimum(deltaPhi, 2*math.pi - deltaPhi)
-    deltaEta = row['jetEta']-row['trackEta']
-    deltaR = np.sqrt(np.square(deltaPhi) + np.square(deltaEta))
-    return np.sum(np.multiply(row['trackPt'], deltaR)) / row['jetPt']
-  dataframe['width'] = dataframe.apply(width, axis=1)
-  return dataframe.drop(columns=['trackPt', 'trackEta', 'trackPhi', 'trackCharge', 'towerE', 'towerEem', 'towerEhad', 'towerEta', 'towerPhi'])
-
-def get_data(modified=False, recalculate=False, max_events=0):
-  if modified:
-    pickle_file = os.path.join(constants.DATA_PATH, 'modified_data.pickle')
-    quarks_path = constants.MODIFIED_QUARKS_PATH
-    gluons_path = constants.MODIFIED_GLUONS_PATH
-  else:
-    pickle_file = os.path.join(constants.DATA_PATH, 'standard_data.pickle')
-    quarks_path = constants.STANDARD_QUARKS_PATH
-    gluons_path = constants.STANDARD_GLUONS_PATH
-  if recalculate or not os.path.exists(pickle_file):
+def update_jets(df_jets, root_path):
+  features = ['jetMass', 'ntracks', 'ntowers', 'width', 'dispersion']
+  missing_features = []
+  for feature in features:
+    if feature not in df_jets:
+      missing_features.append(feature)
+  if missing_features:
     # Normally, imports should be at the top of the module. However, root_numpy
     # has undesirable side-effects when it is imported, to such an extent that
     # it breaks argparse when it is imported. As such, it is not imported until
     # absolutely necessary, in an attempt to limit the damage it does.
     from root_numpy import root2array
-    df_quarks = calculate_jets(pd.DataFrame(root2array(quarks_path)))
-    df_gluons = calculate_jets(pd.DataFrame(root2array(gluons_path)))
-    with open(pickle_file, 'wb+') as fh:
-      pickle.dump((df_quarks, df_gluons), fh)
+    df_jets_raw = pd.DataFrame(root2array(root_path))
+    if 'jetMass' in missing_features:
+      df_jets['jetMass'] = df_jets_raw['jetMass']
+    if 'ntracks' in missing_features:
+      df_jets['ntracks'] = df_jets_raw['ntracks']
+    if 'ntowers' in missing_features:
+      df_jets['ntowers'] = df_jets_raw['ntowers']
+    if 'dispersion' in missing_features:
+      with np.errstate(divide='ignore', invalid='ignore'):
+        df_jets['dispersion'] = df_jets_raw.apply(lambda r: np.sqrt(np.sum(np.square(r['trackPt']))) / np.sum(r['trackPt']), axis=1)
+        df_jets.loc[~np.isfinite(df_jets['dispersion']), 'dispersion'] = 0.0
+    if 'width' in missing_features:
+      def width(row):
+        deltaPhi = np.absolute(row['jetPhi']-row['trackPhi'])
+        deltaPhi = np.minimum(deltaPhi, 2*math.pi - deltaPhi)
+        deltaEta = row['jetEta']-row['trackEta']
+        deltaR = np.sqrt(np.square(deltaPhi) + np.square(deltaEta))
+        return np.sum(np.multiply(row['trackPt'], deltaR)) / row['jetPt']
+      df_jets['width'] = df_jets_raw.apply(width, axis=1)
+  return len(missing_features) != 0
+
+def load_jets(recalculate, pickle_path, root_path):
+  if recalculate or not os.path.exists(pickle_path):
+    df_jets = pd.DataFrame()
   else:
-    with open(pickle_file, 'rb') as fh:
-      df_quarks, df_gluons = pickle.load(fh)
+    df_jets = pd.read_pickle(pickle_path)
+  if update_jets(df_jets, root_path):
+    df_jets.to_pickle(pickle_path)
+  return df_jets
+
+def get_features_and_labels(modified=False, recalculate=False, max_events=0):
+  if modified:
+    quarks_pickle_path = os.path.join(constants.PICKLE_PATH, 'modified_quarks.pkl')
+    gluons_pickle_path = os.path.join(constants.PICKLE_PATH, 'modified_gluons.pkl')
+    quarks_root_path = constants.MODIFIED_QUARKS_ROOT_PATH
+    gluons_root_path = constants.MODIFIED_GLUONS_ROOT_PATH
+  else:
+    quarks_pickle_path = os.path.join(constants.PICKLE_PATH, 'standard_quarks.pkl')
+    gluons_pickle_path = os.path.join(constants.PICKLE_PATH, 'standard_gluons.pkl')
+    quarks_root_path = constants.STANDARD_QUARKS_ROOT_PATH
+    gluons_root_path = constants.STANDARD_GLUONS_ROOT_PATH
+  df_quarks = load_jets(recalculate, quarks_pickle_path, quarks_root_path)
+  df_gluons = load_jets(recalculate, gluons_pickle_path, gluons_root_path)
   df_quark_labels = pd.Series(np.zeros(df_quarks.shape[0], dtype=np.uint8))
   df_gluon_labels = pd.Series(np.ones(df_gluons.shape[0], dtype=np.uint8))
   if max_events > 0:
@@ -55,3 +75,11 @@ def get_data(modified=False, recalculate=False, max_events=0):
   y.reset_index(drop=True, inplace=True)
   return X, y
 
+def main():
+  X_standard, y_standard = get_features_and_labels(modified=False)
+  X_mod, y_mod = get_features_and_labels(modified=True)
+  print(X_standard.head())
+  print(X_mod.head())
+
+if __name__ == '__main__':
+  main()

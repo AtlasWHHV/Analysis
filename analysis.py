@@ -77,8 +77,8 @@ def main():
   parser.add_argument('--recalculate', action='store_true', help='If set, recalculate data from root files, instead of using pickled data.')
   parser.add_argument('--max_events', default=0, type=int, help='The maximum number of standard quark/gluon events to use in training (max_events <= 0 indicates to use all of them)')
   args = parser.parse_args()
-  X_standard, y_standard = data.get_data(modified=False, recalculate=args.recalculate, max_events=args.max_events)
-  X_modified, y_modified = data.get_data(modified=True, recalculate=args.recalculate)
+  X_standard, y_standard = data.get_features_and_labels(modified=False, recalculate=args.recalculate, max_events=args.max_events)
+  X_modified, y_modified = data.get_features_and_labels(modified=True, recalculate=args.recalculate)
   if args.model == 'GBRT' or args.model == 'NN':
     grid = True
     client = Client('localhost:8786')

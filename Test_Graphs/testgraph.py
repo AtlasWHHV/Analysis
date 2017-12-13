@@ -37,11 +37,13 @@ def make_scatter(X, y, img_dir, val, title):
   plt.close()
 
 def main():
-  X, y = data.get_data()
+  X, y = data.get_features_and_labels()
   make_graphs(X, y, 'images')
 
   make_scatter(X, y, 'scatter_images', 0, 'quarks')
   make_scatter(X, y, 'scatter_images', 1, 'gluons')
+
+  print X.corr()
 
 if __name__ == '__main__':
   main()
