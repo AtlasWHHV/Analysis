@@ -9,7 +9,7 @@ import pickle
 import constants
 
 def update_jets(df_jets, root_path):
-  features = ['jetMass', 'ntracks', 'ntowers', 'width', 'dispersion']
+  features = ['jetMass', 'ntracks', 'ntowers', 'width', 'dispersion', 'EMF', 'charge', 'n90']
   missing_features = []
   for feature in features:
     if feature not in df_jets:
@@ -28,10 +28,12 @@ def update_jets(df_jets, root_path):
     if 'ntowers' in missing_features:
       df_jets['ntowers'] = df_jets_raw['ntowers']
     if 'dispersion' in missing_features:
+      print('calculating dispersion')
       with np.errstate(divide='ignore', invalid='ignore'):
         df_jets['dispersion'] = df_jets_raw.apply(lambda r: np.sqrt(np.sum(np.square(r['trackPt']))) / np.sum(r['trackPt']), axis=1)
         df_jets.loc[~np.isfinite(df_jets['dispersion']), 'dispersion'] = 0.0
     if 'width' in missing_features:
+      print('calculating width')
       def width(row):
         deltaPhi = np.absolute(row['jetPhi']-row['trackPhi'])
         deltaPhi = np.minimum(deltaPhi, 2*math.pi - deltaPhi)
@@ -39,7 +41,24 @@ def update_jets(df_jets, root_path):
         deltaR = np.sqrt(np.square(deltaPhi) + np.square(deltaEta))
         return np.sum(np.multiply(row['trackPt'], deltaR)) / row['jetPt']
       df_jets['width'] = df_jets_raw.apply(width, axis=1)
-  return len(missing_features) != 0
+    if 'n90' in missing_features:
+      print('calculating n90')
+      def n90(row):
+        if row['towerE'].size == 0:
+          return 0
+        towerE = np.sort(row['towerE'])[::-1]
+        targetE = 0.9 * np.sum(towerE)
+        return np.argmax(np.cumsum(towerE)>targetE)
+      df_jets['n90'] = df_jets_raw.apply(n90, axis=1)
+    if 'EMF' in missing_features:
+      print('calculating EMF')
+      with np.errstate(divide='ignore', invalid='ignore'):
+        df_jets['EMF'] = df_jets_raw.apply(lambda r: np.sum(r['towerEem']) / np.sum(r['towerE']), axis=1)
+        df_jets.loc[~np.isfinite(df_jets['EMF']), 'EMF'] = 0.0
+    if 'charge' in missing_features:
+      print('calculating charge')
+      df_jets['charge'] = df_jets_raw.apply(lambda r: np.sum(r['trackCharge']), axis=1)
+      return len(missing_features) != 0
 
 def load_jets(recalculate, pickle_path, root_path):
   if recalculate or not os.path.exists(pickle_path):
