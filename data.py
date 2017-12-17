@@ -2,6 +2,7 @@
 import os
 import math
 
+from sklearn.utils import shuffle
 import pandas as pd
 import numpy as np
 import pickle
@@ -85,6 +86,7 @@ def get_features_and_labels(modified=False, recalculate=False, max_events=0):
   else:
     X = pd.concat([df_quarks, df_gluons])
     y = pd.concat([df_quark_labels, df_gluon_labels])
+  X, y = shuffle(X, y)
   X.reset_index(drop=True, inplace=True)
   y.reset_index(drop=True, inplace=True)
   return X, y

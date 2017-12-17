@@ -53,15 +53,15 @@ def print_hyperparameter_report(model):
     print("{:0.3} (+/-{:0.03}) for {!r}".format(mean, 2 * std, params))
   print()
 
-def plot_scores(scores, timestamp):
+def plot_scores(scores, timestamp, set_name):
   for model_name in constants.MODEL_NAMES:
     plt.plot(scores.columns, scores.loc[model_name], label=model_name)
   plt.xscale('log')
   plt.xlabel('n')
   plt.ylabel('mean accuracy')
-  plt.title('Model Accuracy')
+  plt.title('Model Accuracy on {} set'.format(set_name))
   plt.legend()
-  plt.savefig(os.path.join(timestamp, 'model_scores.png'), bbox_inches='tight')
+  plt.savefig(os.path.join(timestamp, '{}_model_scores.png'.format(set_name)), bbox_inches='tight')
   plt.show()
 
 def fit(X, y, model_name, print_report):
@@ -94,23 +94,32 @@ def analyze(args):
     fh.write(str(args))
   X_standard, y_standard = data.get_features_and_labels(modified=False, recalculate=args.recalculate, max_events=args.max_events)
   X_modified, y_modified = data.get_features_and_labels(modified=True, recalculate=args.recalculate)
+  if args.max_events == 0:
+    args.max_events = y_standard.size
   client = Client('localhost:8786')
   webbrowser.open('http://localhost:8787')
   if args.model:
     fit(X_standard, y_standard, args.model, args.print_report)
     joblib.dump(model, os.path.join(timestamp, args.model + '.pkl'))
   elif args.compare_models:
-    scores = {}
-    # max_events is every positive power of 10 no greater than args.max_events.
-    for max_events in 10**np.arange(1, int(math.floor(1+math.log(args.max_events, 10)))):
-      score_slice = {}
+    eval_scores = {}
+    real_scores = {}
+    for max_events in 10**np.arange(2, 1 + int(math.ceil(math.log(args.max_events, 10)))):
+      if max_events > args.max_events:
+        max_events = args.max_events
+      eval_score_slice = {}
+      real_score_slice = {}
       for model_name in constants.MODEL_NAMES:
         model, eval_score = fit(X_standard[:max_events], y_standard[:max_events], model_name, args.print_report)
         real_score = model.score(X_modified, y_modified)
-        score_slice[model_name] = (eval_score, real_score)
-      scores[max_events] = score_slice
-    scores = pd.DataFrame(scores)
-    plot_scores(scores, timestamp)
+        eval_score_slice[model_name] = eval_score
+        real_score_slice[model_name] = real_score
+      eval_scores[max_events] = eval_score_slice
+      real_scores[max_events] = real_score_slice
+    eval_scores = pd.DataFrame(eval_scores)
+    real_scores = pd.DataFrame(real_scores)
+    plot_scores(eval_scores, timestamp, 'eval')
+    plot_scores(real_scores, timestamp, 'real')
 
 def main():
   parser = argparse.ArgumentParser(description='Analyze quark/gluon separation using a particular machine learning model.')
