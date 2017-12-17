@@ -9,6 +9,7 @@ import pickle
 import math
 import webbrowser
 
+from scipy.stats import uniform
 from sklearn.externals import joblib
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -28,6 +29,7 @@ import seaborn as sns
 
 import data
 import constants
+from loguniform import LogUniform
 
 def print_classification_report(model, X, y, title):
   prediction = model.predict(X)
@@ -68,7 +70,7 @@ def fit(X, y, model_name, print_report):
   """Fit the specified model to the given data, returning the model and its score on the evaluation data. """
   if model_name == 'GBRT':
     classifier = GradientBoostingClassifier()
-    param_grid = {'learning_rate': [0.01, 0.1], 'n_estimators': [10, 100, 1000], 'max_depth': [2, 3, 4], 'subsample': [0.1, 0.5, 1.0]}
+    param_grid = {'learning_rate': LogUniform(loc=-2, scale=1), 'n_estimators': LogUniform(loc=1, scale=2, discrete=True), 'max_depth': [2, 3, 4], 'subsample': uniform(loc=0.1, scale=0.9)}
     n_iter = 10
   elif model_name == 'NB':
     classifier = GaussianNB()
@@ -76,8 +78,8 @@ def fit(X, y, model_name, print_report):
     n_iter = 1
   elif model_name == 'NN':
     classifier = Pipeline([('scale', StandardScaler()), ('nn', MLPClassifier())])
-    param_grid = {'nn__alpha': (10.0 ** -np.arange(1, 7)).tolist()}
-    n_iter = 6
+    param_grid = {'nn__alpha': LogUniform(loc=-7, scale=6)}
+    n_iter = 10
   model = RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, cache_cv=False)
   X_dev, X_eval, y_dev, y_eval = train_test_split(X, y)
   model.fit(X_dev, y_dev)
