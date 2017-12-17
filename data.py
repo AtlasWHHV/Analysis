@@ -9,16 +9,11 @@ import pickle
 import constants
 
 def update_jets(df_jets, root_path):
-  features = ['jetMass', 'ntracks', 'ntowers', 'width', 'dispersion', 'EMF', 'charge', 'n90']
   missing_features = []
-  for feature in features:
+  for feature in constants.FEATURES:
     if feature not in df_jets:
       missing_features.append(feature)
   if missing_features:
-    # Normally, imports should be at the top of the module. However, root_numpy
-    # has undesirable side-effects when it is imported, to such an extent that
-    # it breaks argparse when it is imported. As such, it is not imported until
-    # absolutely necessary, in an attempt to limit the damage it does.
     from root_numpy import root2array
     df_jets_raw = pd.DataFrame(root2array(root_path))
     if 'jetMass' in missing_features:
