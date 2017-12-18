@@ -20,8 +20,9 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from dask_searchcv import RandomizedSearchCV
 from dask.distributed import Client
+import dask_searchcv
+import sklearn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,6 +30,7 @@ import seaborn as sns
 
 import data
 import constants
+import simplekeras
 from loguniform import LogUniform
 
 def print_classification_report(model, X, y, title):
@@ -80,14 +82,21 @@ def fit(X, y, model_name, print_report):
     classifier = Pipeline([('scale', StandardScaler()), ('nn', MLPClassifier())])
     param_grid = {'nn__alpha': LogUniform(loc=-7, scale=6)}
     n_iter = 10
-  model = RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, cache_cv=False)
+  elif model_name == 'SK':
+    classifier = Pipeline([('scale', StandardScaler()), ('nn', simplekeras.classifier())])
+    param_grid = {'nn__alpha': LogUniform(loc=-7, scale=6)}
+    n_iter = 10
+  if model_name != 'SK':
+    model = dask_searchcv.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, cache_cv=False)
+  else:
+    model = sklearn.model_selection.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, n_jobs=-1)
   X_dev, X_eval, y_dev, y_eval = train_test_split(X, y)
-  model.fit(X_dev, y_dev)
+  model.fit(X_dev.values, y_dev.values)
   if print_report:
-    print_classification_report(model, X_eval, y_eval)
-    if model_name == 'GBRT' or model_name == 'NN':
+    print_classification_report(model, X_eval, y_eval, model_name)
+    if model_name == 'GBRT' or model_name == 'NN' or model_name == 'SK':
       print_hyperparameter_report(model)
-  return model, model.score(X_eval, y_eval)
+  return model, model.score(X_eval.values, y_eval.values)
 
 def analyze(args):
   timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
@@ -98,11 +107,11 @@ def analyze(args):
   X_modified, y_modified = data.get_features_and_labels(modified=True, recalculate=args.recalculate)
   if args.max_events == 0:
     args.max_events = y_standard.size
-  client = Client('localhost:8786')
-  webbrowser.open('http://localhost:8787')
+  if args.compare_models or args.model != 'SK':
+    client = Client('localhost:8786')
+    webbrowser.open('http://localhost:8787')
   if args.model:
-    fit(X_standard, y_standard, args.model, args.print_report)
-    joblib.dump(model, os.path.join(timestamp, args.model + '.pkl'))
+    model, _ = fit(X_standard, y_standard, args.model, args.print_report)
   elif args.compare_models:
     eval_scores = {}
     real_scores = {}
