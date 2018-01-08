@@ -89,12 +89,12 @@ def fit(X, y, model_name, print_report):
   if model_name != 'SK':
     model = dask_searchcv.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, cache_cv=False)
   else:
-    model = sklearn.model_selection.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, n_jobs=-1)
+    model = sklearn.model_selection.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter)
   X_dev, X_eval, y_dev, y_eval = train_test_split(X, y)
   model.fit(X_dev.values, y_dev.values)
   if print_report:
     print_classification_report(model, X_eval, y_eval, model_name)
-    if model_name == 'GBRT' or model_name == 'NN' or model_name == 'SK':
+    if model_name == 'GBRT' or model_name == 'NN':
       print_hyperparameter_report(model)
   return model, model.score(X_eval.values, y_eval.values)
 
@@ -107,9 +107,9 @@ def analyze(args):
   X_modified, y_modified = data.get_features_and_labels(modified=True, recalculate=args.recalculate)
   if args.max_events == 0:
     args.max_events = y_standard.size
-  if args.compare_models or args.model != 'SK':
-    client = Client('localhost:8786')
-    webbrowser.open('http://localhost:8787')
+  if args.compare_models or args.model in ['NN', 'NB', 'GBRT']:
+    client = Client('tev01.phys.washington.edu:8786', timeout=10)
+    webbrowser.open('http://tev01.phys.washington.edu:8787')
   if args.model:
     model, _ = fit(X_standard, y_standard, args.model, args.print_report)
   elif args.compare_models:
