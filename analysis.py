@@ -8,6 +8,7 @@ import datetime
 import pickle
 import math
 import webbrowser
+import time
 
 from scipy.stats import uniform
 from sklearn.externals import joblib
@@ -68,35 +69,39 @@ def plot_scores(scores, timestamp, set_name):
   plt.savefig(os.path.join(timestamp, '{}_model_scores.png'.format(set_name)), bbox_inches='tight')
   plt.show()
 
-def fit(X, y, model_name, print_report):
+
+def fit(X, y, model_name, print_report, local, hyper):
   """Fit the specified model to the given data, returning the model and its score on the evaluation data. """
   if model_name == 'GBRT':
-    classifier = GradientBoostingClassifier()
+    model = GradientBoostingClassifier()
     param_grid = {'learning_rate': LogUniform(loc=-2, scale=1), 'n_estimators': LogUniform(loc=1, scale=2, discrete=True), 'max_depth': [2, 3, 4], 'subsample': uniform(loc=0.1, scale=0.9)}
     n_iter = 10
   elif model_name == 'NB':
-    classifier = GaussianNB()
+    model = GaussianNB()
     param_grid = {}
     n_iter = 1
   elif model_name == 'NN':
-    classifier = Pipeline([('scale', StandardScaler()), ('nn', MLPClassifier())])
+    model = Pipeline([('scale', StandardScaler()), ('nn', MLPClassifier())])
     param_grid = {'nn__alpha': LogUniform(loc=-7, scale=6)}
     n_iter = 10
   elif model_name == 'SK':
-    classifier = Pipeline([('scale', StandardScaler()), ('nn', simplekeras.classifier())])
+    model = Pipeline([('scale', StandardScaler()), ('nn', simplekeras.classifier())])
     param_grid = {'nn__alpha': LogUniform(loc=-7, scale=6)}
     n_iter = 10
-  if model_name != 'SK':
-    model = dask_searchcv.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter, cache_cv=False)
-  else:
-    model = sklearn.model_selection.RandomizedSearchCV(classifier, param_grid, n_iter=n_iter)
+  if hyper:
+    if model_name != 'SK' and not local:
+      model = dask_searchcv.RandomizedSearchCV(model, param_grid, n_iter=n_iter, cache_cv=False)
+    else:
+      model = sklearn.model_selection.RandomizedSearchCV(model, param_grid, n_iter=n_iter)
   X_dev, X_eval, y_dev, y_eval = train_test_split(X, y)
+  begin = time.time()
   model.fit(X_dev.values, y_dev.values)
+  elapsed_time = time.time() - begin
   if print_report:
     print_classification_report(model, X_eval, y_eval, model_name)
-    if model_name == 'GBRT' or model_name == 'NN':
+    if hyper:
       print_hyperparameter_report(model)
-  return model, model.score(X_eval.values, y_eval.values)
+  return model, model.score(X_eval.values, y_eval.values), elapsed_time
 
 def analyze(args):
   timestamp = '{:%Y%m%d%H%M%S}'.format(datetime.datetime.now())
@@ -107,28 +112,25 @@ def analyze(args):
   X_modified, y_modified = data.get_features_and_labels(modified=True, recalculate=args.recalculate)
   if args.max_events == 0:
     args.max_events = y_standard.size
-  if args.compare_models or args.model in ['NN', 'NB', 'GBRT']:
+  if not args.local and (args.compare_models or args.model in ['NN', 'NB', 'GBRT']):
     client = Client('tev01.phys.washington.edu:8786', timeout=10)
     webbrowser.open('http://tev01.phys.washington.edu:8787')
   if args.model:
-    model, _ = fit(X_standard, y_standard, args.model, args.print_report)
+    model, _, elapsed_time = fit(X_standard, y_standard, args.model, args.print_report, args.local, not args.no_hyper and not args.model == 'NB')
+    print('Total elapsed time (s): {}'.format(elapsed_time))
   elif args.compare_models:
-    eval_scores = {}
-    real_scores = {}
-    for max_events in 10**np.arange(2, 1 + int(math.ceil(math.log(args.max_events, 10)))):
-      if max_events > args.max_events:
-        max_events = args.max_events
-      eval_score_slice = {}
-      real_score_slice = {}
+    max_events_array = 10**np.arange(2, 1 + int(math.ceil(math.log(args.max_events, 10))))
+    max_events_array[-1] = args.max_events
+    eval_scores = pd.DataFrame(np.nan, index=constants.MODEL_NAMES, columns=max_events_array)
+    real_scores = pd.DataFrame(np.nan, index=constants.MODEL_NAMES, columns=max_events_array)
+    elapsed_times = pd.DataFrame(np.nan, index=constants.MODEL_NAMES, columns=max_events_array)
+    for max_events in max_events_array:
       for model_name in constants.MODEL_NAMES:
-        model, eval_score = fit(X_standard[:max_events], y_standard[:max_events], model_name, args.print_report)
+        model, eval_score, elapsed_time = fit(X_standard[:max_events], y_standard[:max_events], model_name, args.print_report, args.local, not args.no_hyper)
         real_score = model.score(X_modified, y_modified)
-        eval_score_slice[model_name] = eval_score
-        real_score_slice[model_name] = real_score
-      eval_scores[max_events] = eval_score_slice
-      real_scores[max_events] = real_score_slice
-    eval_scores = pd.DataFrame(eval_scores)
-    real_scores = pd.DataFrame(real_scores)
+        eval_scores.at[model_name, max_events] = eval_score
+        real_scores.at[model_name, max_events] = real_score
+        elapsed_times.at[model_name, max_events] = elapsed_time
     plot_scores(eval_scores, timestamp, 'eval')
     plot_scores(real_scores, timestamp, 'real')
 
@@ -140,6 +142,8 @@ def main():
   parser.add_argument('--recalculate', action='store_true', help='Recalculate features from root files, instead of using pickled features.')
   parser.add_argument('--print_report', action='store_true', help='Print a report detailing the performance of the model.')
   parser.add_argument('--max_events', default=0, type=int, help='The maximum number of standard quark/gluon events to use in training (max_events <= 0 indicates to use all of them)')
+  parser.add_argument('--local', action='store_true', help='Perform all calculations locally.')
+  parser.add_argument('--no_hyper', action='store_true', help='Skip hyperparameterization.')
   args = parser.parse_args()
   analyze(args)
   
