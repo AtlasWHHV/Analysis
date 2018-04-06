@@ -1,0 +1,28 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+name = "pypi"
+verify_ssl = true
+
+[dev-packages]
+
+[requires]
+python_version = "2.7"
+
+[packages]
+numpy = "*"
+scipy = "*"
+pandas = "*"
+scikit-learn = "*"
+matplotlib = "*"
+seaborn = "*"
+dask = "*"
+distributed = "*"
+dask-ml = {extras = ["complete"]}
+tensorflow = "==1.5.0"
+"h5py" = "*"
+graphviz = "*"
+pydot = "*"
+keras = "*"
+uproot = "*"
+paramiko = "*"
+bokeh = "*"

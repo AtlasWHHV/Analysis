@@ -1,11 +1,13 @@
 """load, store, and process quark/gluon data."""
 import os
 import math
+import glob
 
 from sklearn.utils import shuffle
 import pandas as pd
 import numpy as np
 import pickle
+import uproot
 
 import constants
 
@@ -15,8 +17,7 @@ def update_jets(df_jets, root_path):
     if feature not in df_jets:
       missing_features.append(feature)
   if missing_features:
-    from root_numpy import root2array
-    df_jets_raw = pd.DataFrame(root2array(root_path))
+    df_jets_raw = pd.concat([uproot.open(p)['treeJets'].pandas.df() for p in glob.glob(root_path)])
     if 'jetMass' in missing_features:
       df_jets['jetMass'] = df_jets_raw['jetMass']
     if 'ntracks' in missing_features:
