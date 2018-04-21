@@ -1,17 +1,17 @@
 [[source]]
-url = "https://pypi.python.org/simple"
 name = "pypi"
+url = "https://pypi.python.org/simple"
 verify_ssl = true
 
 [dev-packages]
 
 [requires]
-python_version = "2.7"
+python_version = "3.4"
 
 [packages]
+pandas = "*"
 numpy = "*"
 scipy = "*"
-pandas = "*"
 scikit-learn = "*"
 matplotlib = "*"
 seaborn = "*"
