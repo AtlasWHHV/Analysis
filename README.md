@@ -1,0 +1,17 @@
+# Quark-Gluon-Analysis
+The purpose of this repository is to explore using machine learning techniques to solve high energy physics problems as preparation for later analysis of long-living particles relating to hidden valley sector theories of dark matter. Specifically, it is often useful to discriminate between different kinds of 'jets', which are collections of decay products resulting from high energy collisions. In this case, we distinguish between gluon jets and quark jets, where gluon and quark refer to the type of particle that decayed.
+
+## Getting Started
+This project is intended to be run on the TeV cluster at the UW Department of Physics using Python 3. If you intend to run it on a different cluster, you must modify the hostfile.txt file to include appropriate addresses for your cluster, and you may also need to modify the dask_ssh.sh script. 
+
+First, clone the repository from git to a convenient location (ssh is recommended). Once you have cloned the repository, source the package_setup.sh script in bash. This will install the required packages and setup your environment. Note that pipenv is used to maintain a virtual python environment, so you must either start the pipenv virtual environment by running `pipenv shell` or run all scripts by prepending `pipenv run`, e.g., `pipenv run python package_test.py`. See the pipenv documentation for more information.
+
+## Running Analysis
+The main script is analysis.py; if you run `pipenv run python analysis.py -h`, you will see an up-to-date list of available commands. analysis.py supports training and testing several different models, or comparing all of the models, on all or part of the quark/gluon data, either locally or using the full TeV cluster and with or without hyper-parameter optimization. Note that a full analysis comparing all of the models with hyper-parameter optimization on the full data set can take weeks, even using the entire TeV cluster. 
+
+By default, analysis.py uses the TeV cluster. To do so, you must first run `source dask_ssh.sh` on the scheduler machine (tev01). This will spawn a dask scheduler on tev01 and dask workers on the other tev machines. Once you're done running analysis.py, you can terminate these processes by pressing CTRL + C.
+
+The fastest model to train is the Naive Bayes model, so let's use that as an example. Run `pipenv run python analysis.py -m "NB" --print_report --local --no_hyper` and you should see a classification report for the Naive Bayes model. If you want to use the cluster, try running `pipenv run python analysis.py -m "GBRT" --print_report --max_events 1000000`, and a scikit-learn Gradient-Boosted Regression Tree (more commonly known as a boosted decision tree or BDT) will be fit to the data. 
+
+## Future Work
+The next step is to create and test a convolutional neural network (CNN) model in keras, based on [this](https://arxiv.org/pdf/1612.01551.pdf) research, which was [presented](https://indico.cern.ch/event/579660/contributions/2582125/attachments/1494989/2325705/ptk_boost_2017.pdf) recently at Boost 2017. We can initially utilize a 2-dimensional CNN, using pseudorapidity (eta) and azimuthal angle (phi) as coordinates while meta variables such as transverse momentum (pt) can serve as image channels. However, in order to study long-lived particles, it will likely be crucial to extend to a 3-dimensional CNN by including depth information, as an important indicator of such particles is their displaced vertex in the third dimension.
