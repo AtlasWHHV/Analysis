@@ -1,7 +1,7 @@
 [[source]]
 name = "pypi"
-url = "https://pypi.python.org/simple"
 verify_ssl = true
+url = "https://pypi.org/simple"
 
 [dev-packages]
 
@@ -9,7 +9,6 @@ verify_ssl = true
 python_version = "3.4"
 
 [packages]
-pandas = "*"
 numpy = "*"
 scipy = "*"
 scikit-learn = "*"
@@ -26,3 +25,5 @@ keras = "*"
 uproot = "*"
 paramiko = "*"
 bokeh = "*"
+pandas = "==0.20"
+backports-abc = "*"

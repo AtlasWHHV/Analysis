@@ -1,6 +1,7 @@
 import sys
 import numpy
 import scipy
+import pandas
 import sklearn
 import matplotlib
 import seaborn
@@ -16,6 +17,7 @@ import uproot
 print('python version: {}.{}.{}'.format(sys.version_info[0], sys.version_info[1], sys.version_info[2]))
 print('numpy version: {}'.format(numpy.__version__))
 print('scipy version: {}'.format(scipy.__version__))
+print('pandas version: {}'.format(pandas.__version__))
 print('scikit-learn version: {}'.format(sklearn.__version__))
 print('matplotlib version: {}'.format(matplotlib.__version__))
 print('seaborn version: {}'.format(seaborn.__version__))
