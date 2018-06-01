@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Check to see if we need to install pipenv.
+export LC_ALL=en_US.utf-8
+export LANG=en_US.utf-8
 if [[ !$(type -P "pipenv") ]]; then
   # Make sure that the user base binary directory is in the path.
   USER_BASE_BIN_PATH=$(python -m site --user-base)"/bin"
@@ -13,7 +15,7 @@ if [[ !$(type -P "pipenv") ]]; then
       printf "Do you wish to add:\nif [[ \":\$PATH:\" != *\":\$(python -m site --user-base)/bin:\"* ]]; then\n  export PATH=\$PATH:\$(python -m site --user-base)/bin\nfi\nto your ~/.bashrc for future use (recommended)?"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) printf "if [[ \":\$PATH:\" != *\":\$(python -m site --user-base)/bin:\"* ]]; then\n  export PATH=\$PATH:\$(python -m site --user-base)/bin\nfi" >> ~/.bashrc; break;;
+          Yes ) printf "if [[ \":\$PATH:\" != *\":\$(python -m site --user-base)/bin:\"* ]]; then\n  export PATH=\$PATH:\$(python -m site --user-base)/bin\nfi" >> ~/.bashrc; break;;http://click.pocoo.org/5/python3/
           No ) break;;
         esac
       done
