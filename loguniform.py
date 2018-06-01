@@ -1,5 +1,6 @@
 from scipy.stats import uniform
 
+
 class LogUniform:
   def __init__(self, loc, scale, base=10, discrete=False):
     self.loc = loc

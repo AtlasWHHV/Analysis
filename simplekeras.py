@@ -1,9 +1,10 @@
-from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.wrappers.scikit_learn import KerasClassifier
+from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.regularizers import l2
+from tensorflow.python.keras.wrappers.scikit_learn import KerasClassifier
 
 import constants
+
 
 def classifier(epochs=200, batch_size=200):
   return KerasClassifier(build_fn=simple_nn, epochs=epochs, batch_size=batch_size)
