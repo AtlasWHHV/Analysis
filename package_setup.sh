@@ -15,7 +15,7 @@ if [[ !$(type -P "pipenv") ]]; then
       printf "Do you wish to add:\nif [[ \":\$PATH:\" != *\":\$(python -m site --user-base)/bin:\"* ]]; then\n  export PATH=\$PATH:\$(python -m site --user-base)/bin\nfi\nto your ~/.bashrc for future use (recommended)?"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) printf "if [[ \":\$PATH:\" != *\":\$(python -m site --user-base)/bin:\"* ]]; then\n  export PATH=\$PATH:\$(python -m site --user-base)/bin\nfi" >> ~/.bashrc; break;;http://click.pocoo.org/5/python3/
+          Yes ) printf "if [[ \":\$PATH:\" != *\":\$(python -m site --user-base)/bin:\"* ]]; then\n  export PATH=\$PATH:\$(python -m site --user-base)/bin\nfi" >> ~/.bashrc; break;;#http://click.pocoo.org/5/python3/
           No ) break;;
         esac
       done
